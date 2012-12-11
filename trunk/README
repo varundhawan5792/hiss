@@ -1,0 +1,24 @@
+NeweraHPC(high perfomance cluster) is an open source  library with 
+advanced network communication modules designed for carrying out 
+mathematical calculations on a wide range of computers.
+
+The program is designed to distribute calculations on a grid so as to decrease execution time.
+
+GOAL:
+The goal behind the program is to create a universally acceptable platform 
+for super computing which can be put to use on various work areas.
+Most importantly we chose to develop on GCC as it is available on 
+various platforms. We could run our program on Linux, Mac OS X, Windows and BSD. 
+We are looking for active participation from developers to work with us as there 
+are tremendous opportunities available in this area.
+
+
+#AC_ARG_ENABLE([debug], 
+#              [  --enable-debug Turn on debugging], 
+#              [case "${enableval}" in 
+#                yes) debug=true ;; 
+#                   CXXFLAGS="$CXXFLAGS -g" ;;
+#                no) debug=false ;; 
+#                *) AC_MSG_ERROR([bad value ${enableval} for --enable-debug]) ;;
+#              esac],[debug=false]) 
+#AM_CONDITIONAL([DEBUG], [test x$debug = xtrue])

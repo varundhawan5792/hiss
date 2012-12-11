@@ -1,0 +1,3 @@
+neuron.lo: neuron.cpp ../../include/neuron.h
+
+../../include/neuron.h:

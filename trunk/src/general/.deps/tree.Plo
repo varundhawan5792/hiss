@@ -1,0 +1,5 @@
+tree.lo: tree.cpp ../../config.h ../../include/tree.h
+
+../../config.h:
+
+../../include/tree.h:
