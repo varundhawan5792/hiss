@@ -1,0 +1,63 @@
+<html>
+   <head>	
+      <script type="text/javascript" src="/ui_temp/jquery-1.8.0.min.js">
+      </script>
+      <script type="text/javascript">
+      
+      	 function getBaseURL() 
+         {
+            var url = location.href;  // entire url including querystring - also: window.location.href;
+	    var baseURL = url.substring(0, url.indexOf('/', 14));
+
+            return baseURL + "/";
+         }
+
+         function load()
+         {
+            host = getBaseURL();
+ 
+            xml_path = (document.URL).split("/");
+            xml_path = xml_path[xml_path.length - 1];
+	    xml_path = host + "/ui_temp/" + xml_path + ".json";
+         
+            if (window.XMLHttpRequest)
+               xmlhttp=new XMLHttpRequest();
+            else
+               xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+            xmlhttp.open("GET", xml_path, false);
+            xmlhttp.send();
+            xmlDoc=xmlhttp.responseXML;     
+
+	    $.getJSON(xml_path, function(items)
+            {
+            
+            });
+            
+            app_window = xmlDoc.getElementsByTagName("neweraHPC_ui");            
+            app_title = app_window[0].getElementsByTagName("app_title")[0].childNodes[0].nodeValue;
+            app_height = app_window[0].getElementsByTagName("height")[0].childNodes[0].nodeValue;
+            app_width = app_window[0].getElementsByTagName("width")[0].childNodes[0].nodeValue;
+            app_button1 = app_window[0].getElementsByTagName("button1")[0].childNodes[0].nodeValue;
+            document.title = app_title; 
+            
+            document.write('<table height=' + app_height + ' width=' + app_width + ' border=12 ><tr><th>' + app_title +'</th></tr>');
+            document.write("<tr><td><button id=" + app_button1 +  " > " + app_button1 + " </button>");
+            document.write('</table>');
+
+            $(document).ready(function()
+            {
+               $('#about').click(function()
+               {
+ 	          jQuery.ajax("/index.html");
+               });
+            });
+         } 
+      </script>
+     
+   </head>
+   <body onload="load()">
+      <script type="text/javascript">
+      </script>
+   </body>
+</html>
+

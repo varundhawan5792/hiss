@@ -1,0 +1,1144 @@
+build-command:cd mpix && mkdir bin && make mpi
+build-command:cd ..
+build-command:make
+
+<<file:plugin.cpp>>
+//Copyright 2010 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+#include <string>
+#include <iostream>
+#include "plugin.h"
+#include <init.h>
+
+using namespace std;
+using namespace newera_network;
+using namespace newera_mpi;
+
+void print_num(newera_hpc_bit *num,int count){
+        cout<<num[0]<<" "<<endl;
+        int b =0;
+        for(int a=1;a<count;a++){
+                cout<<num[a];
+                if(a%10==0){
+                        cout<<" ";
+                        b++;
+                        if(b==5){
+                                cout<<endl;
+                                b=0;
+                        }
+                }
+        }
+        cout<<endl;
+}
+
+extern "C"{
+	string *plugin_init(){
+		cout<<"function loaded successfully"<<endl;
+		string *abcx = new string;
+		(*abcx) = "newera_task";
+		return abcx;
+	}
+	grid_task *plugin_exec(){
+		int *a = new int;
+		*a = 12;
+		int *b = new int;
+		*b = 34;
+		grid_task *task = new grid_task;
+		instruction_set *in1 = new instruction_set;
+		in1->data = (void *)a;
+		in1->length = sizeof(int);
+		instruction_set *in2 = new instruction_set;
+		in2->data = (void *)b;
+		in2->length = sizeof(int);
+		(*task) = in1;
+		(*task) = in2;
+		return task;
+	}
+	instruction_set *plugin_exec_client(void *data){
+		cout<<"executing client function"<<endl;
+		instruction_set *instruction = (instruction_set *)data;
+		int *values = (int *)instruction->data;
+		newera_hpc_data *data_mpi = arctan(values[0],0,values[1]);
+		instruction->data = (void *)data_mpi->data;
+		instruction->length = sizeof(newera_hpc_bit)*4000;
+		return instruction;
+	}
+	void *plugin_processor(void *data){
+		instruction_set **instructions = (instruction_set **)data;
+		instruction_set *in1,*in2;
+		in1 = instructions[0];
+		in2 = instructions[1];
+		newera_hpc_bit *a = (newera_hpc_bit *)in1->data;
+		newera_hpc_bit *b = (newera_hpc_bit *)in2->data;
+		multiply_old(a,16,4000);
+		multiply_old(b,4,4000);
+		subtract_old(a,b,4000);
+		print_num(a,4000);
+		print_num(b,4000);
+		cout<<"i have all the data from clients"<<endl;
+	}
+}
+<<file:over>>
+<<file:plugin.h>>
+//Copyright 2010 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+#include <newerahpc/network.h>
+<<file:over>>
+<<file:Makefile>>
+MPIX_INCLUDE = mpix/include
+MPIX_LIB = mpix/bin
+
+all:
+	g++ plugin.cpp -o bin/plugin.o -c -I $(MPIX_INCLUDE)
+	g++ bin/*.o -o bin/libplugin.so -shared -ldl -dynamiclib -rdynamic -fPIC -shared -lnewera_server -L$(MPIX_LIB) -lmpix
+	
+clean:
+	rm bin/*
+<<file:over>>
+<<file:mpix/Makefile>>
+all:clean mpi test
+
+mpi:clean
+	g++ src/init.cpp -c -I./include -o bin/init.o -O3
+	g++ src/add.cpp -c -I./include -o bin/add.o -O3
+	g++ src/subtract.cpp -c -I./include -o bin/subtract.o -O3
+	g++ src/multiply.cpp -c -I./include -o bin/multiply.o -O3
+	g++ src/basic.cpp -c -I./include -o bin/basic.o -O3
+	g++ src/io.cpp -c -I./include -o bin/io.o -O3
+	g++ src/compare.cpp -c -I./include -o bin/compare.o -O3
+	g++ src/devide.cpp -c -I./include -o bin/devide.o -O3
+	g++ src/math_old.cpp -c -I./include -o bin/math_old.o -O3
+	g++ src/arctan.cpp -c -I./include -o bin/arctan.o -O3
+	g++ src/string.cpp -c -I./include -o bin/string.o -O3
+	ar -cvq bin/libmpix.a bin/*.o 
+	rm bin/*.o
+
+clean:
+	touch bin/temp
+	rm bin/*
+
+test:
+	g++ test.cpp -L./bin -lmpix -o bin/test -g2 -pg
+<<file:over>>
+<<file:mpix/include/io.h>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+namespace newera_mpi{
+  extern void print_f(newera_hpc_data *);
+};
+<<file:over>>
+<<file:mpix/include/adv_math.h>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+namespace newera_mpi{
+  newera_hpc_data *arctan(newera_hpc_bit,int,int);
+};
+<<file:over>>
+<<file:mpix/include/basic.h>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+namespace newera_mpi{
+	extern void copy(newera_hpc_data *,newera_hpc_data *);
+	extern int  check_zero(newera_hpc_data *);
+};
+<<file:over>>
+<<file:mpix/include/basic_math.h>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+namespace newera_mpi{
+  extern void add(newera_hpc_data*,newera_hpc_data*);
+  extern void subtract(newera_hpc_data*,newera_hpc_data*);
+  extern void multiply(newera_hpc_data *,newera_hpc_bit);
+  extern void assign(newera_hpc_data *input,int num);
+  extern newera_hpc_data *devide(newera_hpc_data *,newera_hpc_data *,float *);
+};
+<<file:over>>
+<<file:mpix/include/compare.h>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+namespace newera_mpi{
+   extern int compare(newera_hpc_data *,newera_hpc_data *);
+};
+<<file:over>>
+<<file:mpix/include/data.h>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+#define digits_mpi 4000
+typedef unsigned int newera_hpc_bit;
+
+namespace newera_mpi{
+	struct newera_hpc_data{
+		newera_hpc_bit data[digits_mpi];
+		int digits_used;
+		int count;
+		void (*delete_data)(); 
+	};
+};
+
+<<file:over>>
+<<file:mpix/include/init.h>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+#include "data.h"
+#include "basic_math.h"
+#include "io.h"
+#include "compare.h"
+#include "basic.h"
+#include "adv_math.h"
+#include "old_math.h"
+#include "string_mpi.h"
+
+namespace newera_mpi{
+  extern newera_hpc_data* init_data();
+  extern void delete_data(newera_hpc_data*);
+  extern void re_init_data(newera_hpc_data*);
+  extern void zero(newera_hpc_data*);
+  extern void zero_manual(newera_hpc_data*);
+};
+<<file:over>>
+<<file:mpix/include/io.h>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+namespace newera_mpi{
+  extern void print_f(newera_hpc_data *);
+};
+<<file:over>>
+<<file:mpix/include/old_math.h>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+
+//these are dpreciated functions
+
+namespace newera_mpi{
+  void add_old(newera_hpc_bit*,newera_hpc_bit*,int);
+  void subtract_old(newera_hpc_bit*,newera_hpc_bit*,int);
+  void multiply_old(newera_hpc_bit*,int,int);
+};
+<<file:over>>
+<<file:mpix/include/string_mpi.h>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+#include <string>
+
+using namespace std;
+
+namespace newera_mpi{
+	newera_hpc_data *str_newera_hpc(string *);
+	string newera_hpc_str(newera_hpc_data *);
+	char* newera_hpc_char(newera_hpc_data *);
+	newera_hpc_data* char_newera_hpc(char *,int);
+};
+<<file:over>>
+<<file:mpix/src/add.cpp>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+#include <data.h>
+#include <basic_math.h>
+#include <iostream>
+
+using namespace std;
+
+namespace newera_mpi{
+  void add(newera_hpc_data *n1,newera_hpc_data *n2){
+    int limit;
+    newera_hpc_bit *num1= n1->data;
+    newera_hpc_bit *num2= n2->data;
+    if(n1->digits_used>=n2->digits_used){
+       limit = (n2->digits_used);
+    }
+    else{
+       limit = (n1->digits_used);
+    }
+    int temp_c3;
+    int temp_c4=0;
+    for(temp_c3=(n1->count-1);temp_c3>=limit;temp_c3--){
+        temp_c4++;
+        num1[temp_c3]=num1[temp_c3]+num2[temp_c3];
+        if(num1[temp_c3]>9){
+           num1[temp_c3]=num1[temp_c3]%10;
+           num1[temp_c3-1]++;
+           if(temp_c3==limit){
+              (n1->digits_used)=limit;
+              (n1->digits_used)--;
+           }
+        }
+        else if(temp_c3==limit){
+           if(n1->digits_used>n2->digits_used)
+             (n1->digits_used)=limit;
+        }
+    }
+    if(limit==0)limit=1;
+    num1[limit-1]=num1[limit-1]+num2[limit-1];
+  }
+};
+<<file:over>>
+<<file:mpix/src/arctan.cpp>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+#include <init.h>
+#include <string>
+#include <iostream>
+
+using namespace std;
+
+namespace newera_mpi{
+   newera_hpc_data *arctan(newera_hpc_bit num,int start_d,int end_d){
+       newera_hpc_data *power = init_data();
+       newera_hpc_data *power_m = init_data();
+       newera_hpc_data *power_t1 = init_data();
+       newera_hpc_data *temp_data = init_data();
+       newera_hpc_data *result = init_data();
+       newera_hpc_bit power_count;
+       int x1;
+       int *count;
+       int flag = 0;
+       float quot;
+       assign(power,1);
+       for(int temp_c1=start_d;temp_c1<end_d;temp_c1++){
+          cout<<temp_c1<<endl;
+          power_count = 2*temp_c1+1;
+          if(temp_c1==start_d){
+             assign(power,num);
+             if(temp_c1!=0){
+                for(int temp_c2=0;temp_c2<start_d;temp_c2++){
+                   multiply(power,num);
+                   multiply(power,num);
+                }
+             }
+          }
+          else{
+             multiply(power,num);
+             multiply(power,num);
+          }
+
+          copy(power,power_m);
+          multiply(power_m,power_count);
+          copy(power_m,power_t1);
+          
+          x1 = power_m->digits_used;
+          if(x1==0)break;
+          re_init_data(power_m);
+          power_m->data[--x1]=1;
+          power_m->digits_used = x1;
+          x1 = power_m->count-x1-1;
+          temp_data->digits_used = x1;
+          count = &(power->count);
+          for(int temp_c2 = x1;temp_c2<*count;temp_c2++){
+             if(check_zero(power_m)==0)break;
+             devide(power_m,power_t1,&quot);
+             multiply(power_m,10);
+             temp_data->data[temp_c2] = quot;
+          }
+          if(flag==0){
+             add(result,temp_data);
+             flag=1;
+          }
+          else{
+             subtract(result,temp_data);
+             flag=0;
+          }
+          temp_data->digits_used = 0;
+          re_init_data(temp_data);
+          re_init_data(power_m);
+       }
+       delete_data(power);
+       delete_data(power_m);
+       delete_data(power_t1);
+       delete_data(temp_data);
+       return result;
+   }
+};
+<<file:over>>
+<<file:mpix/src/basic.cpp>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+
+#include <iostream>
+#include <init.h>
+
+using namespace std;
+
+namespace newera_mpi{
+  void assign(newera_hpc_data *input,int num){
+    newera_hpc_bit *data = input->data;
+    int *count = &(input->count);
+    int a=0;
+    input->digits_used = input->count;
+    while(1){
+      data[*count-a-1] = (num%10);
+      num = num/10;
+      if(num!=0)
+        (input->digits_used)--;
+      a++;
+      if(num<10){
+        data[*count-a-1] = num;
+        (input->digits_used)--;
+        break;
+      }
+    }
+  }
+  void copy(newera_hpc_data *src,newera_hpc_data *dst){
+    re_init_data(dst);
+    for(int temp_c1=src->digits_used;temp_c1<src->count;temp_c1++){
+       dst->data[temp_c1] = src->data[temp_c1];
+    }
+    dst->digits_used = src->digits_used;
+  }
+  int check_zero(newera_hpc_data *n1){
+    int *count = &(n1->count);
+    if((n1->digits_used==(*count-1))&&n1->data[*count-1]==0)return 0;
+    else return 1;
+  }
+};
+
+<<file:over>>
+<<file:mpix/src/compare.cpp>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+#include <data.h>
+
+namespace newera_mpi{
+  int compare(newera_hpc_data *n1,newera_hpc_data *n2){
+    if(n1->digits_used>n2->digits_used)return 1;
+    else if(n1->digits_used<n2->digits_used)return -1;
+    int *limit = &(n1->digits_used);
+    int *count = &(n1->count);
+    newera_hpc_bit *num1 = n1->data;
+    newera_hpc_bit *num2 = n2->data;
+    for(int temp_c1=*limit;temp_c1<*count;temp_c1++){
+       if(num1[temp_c1]>num2[temp_c1])return -1;
+       else if(num1[temp_c1]<num2[temp_c1])return 1;
+    }
+    return 0;
+  }
+};
+<<file:over>>
+<<file:mpix/src/devide.cpp>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+#include <init.h>
+#include <iostream>
+#include <stdlib.h>
+
+using namespace std;
+
+namespace newera_mpi{
+  newera_hpc_data *devide(newera_hpc_data *n1,newera_hpc_data *n2,float *quot){
+    int ab = compare(n1,n2);
+    if(ab==1){
+      *quot = 0;
+      return n1;
+    }
+    newera_hpc_data *n_temp = init_data();
+    copy(n2,n_temp);
+    int *count = &(n1->count);
+    *quot = 0;
+    if(check_zero(n1)==0){
+        delete_data(n_temp);
+        return n1;
+    }
+    float temp = 1;
+    while(1){
+       if(n1->digits_used==n_temp->digits_used)break;
+       while(n1->digits_used!=(n_temp->digits_used-1)){
+          multiply(n_temp,10);
+          temp = temp*10;
+       }
+       *quot = *quot + temp;
+       temp = 1;
+       subtract(n1,n_temp);
+       if(compare(n1,n2)==1)break;
+       re_init_data(n_temp);
+       copy(n2,n_temp); 
+    }
+    copy(n2,n_temp);
+    int a = compare(n_temp,n1);
+    while(a!=-1){
+      add(n_temp,n2);
+      a = compare(n_temp,n1);
+      if(a==0){
+        re_init_data(n1);
+        *quot = *quot+1;
+        delete_data(n_temp);
+        return n1;
+      }
+      else *quot = *quot+1;
+    }
+    subtract(n_temp,n1);
+    copy(n2,n1);
+    subtract(n1,n_temp);
+    delete_data(n_temp);
+    return n1;
+  }
+};
+<<file:over>>
+<<file:mpix/src/devide_back.cpp>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+#include <init.h>
+#include <iostream>
+
+using namespace std;
+
+namespace newera_mpi{
+  newera_hpc_data *devide(newera_hpc_data *n1,newera_hpc_data *n_orig,float *quot){
+    newera_hpc_data *n2 = init_data();
+    copy(n_orig,n2);
+    int *count = &(n1->count);
+    *quot = 0;
+    if(check_zero(n1)==0){
+        delete_data(n2);
+        return n1;
+    }
+    int a = compare(n1,n2);
+    int ab = compare(n1,n_orig);
+    float temp = 1;
+//  while(ab==-1){
+    while(1){
+       if(n1->digits_used==n2->digits_used)break;
+       while(n1->digits_used!=(n2->digits_used-1)){
+          multiply(n2,10);
+          temp = temp*10;
+       }
+       *quot = *quot + temp;
+       temp = 1;
+       subtract(n1,n2);
+       re_init_data(n2);
+       copy(n_orig,n2); 
+       ab = compare(n1,n_orig);
+    }
+    copy(n_orig,n2);
+    while(a!=1){
+      add(n2,n_orig);
+      a = compare(n1,n2);
+      *quot = *quot+1;
+      if(a==0){
+        re_init_data(n1);
+        *quot = *quot+1;
+        delete_data(n2);
+        return n1;
+      }
+    }
+    subtract(n2,n1);
+    cout<<"a"<<endl;
+    print_f(n2);
+    cout<<"a"<<endl;
+    re_init_data(n1);
+    copy(n_orig,n1);
+    subtract(n1,n2);
+    delete_data(n2);
+    return n1;
+  }
+};
+<<file:over>>
+<<file:mpix/src/init.cpp>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+#include <init.h>
+#include <stdio.h>
+#include <string.h>
+
+namespace newera_mpi{
+	newera_hpc_data* init_data(){
+     		newera_hpc_data *data = new newera_hpc_data;
+     		data->digits_used = 0;
+     		zero(data);
+     		data->digits_used = digits_mpi-1;
+     		data->count = digits_mpi;
+     		return data;
+  	}
+  	void delete_data(newera_hpc_data *data){
+	  	delete data;
+	  	data = 0;
+  	}
+ 	void re_init_data(newera_hpc_data *data){
+     		zero(data);
+     		data->digits_used = digits_mpi-1;
+  	}
+  	void zero(newera_hpc_data *data){
+		//memset(data->data,0,sizeof(newera_hpc_bit)*data->count);
+     		for(int a=data->digits_used;a<data->count;a++)data->data[a]=0;
+  	}
+  	void zero_manual(newera_hpc_data *data){
+		zero(data);
+     		//for(int a=0;a<data->count;a++)data->data[a]=0;
+  	}
+}
+<<file:over>>
+<<file:mpix/src/io.cpp>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+#include <data.h>
+#include <iostream>
+
+using namespace std;
+
+namespace newera_mpi{
+  void print_f(newera_hpc_data *input){
+    for(int a=0;a<input->count;a++)cout<<input->data[a];
+    cout<<endl;
+  }
+};
+<<file:over>>
+<<file:mpix/src/math_old.cpp>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+#include <data.h>
+
+namespace newera_mpi{
+   void add_old(newera_hpc_bit *resultx,newera_hpc_bit *temp_datax,int count){
+      for(int temp_c3=(count-1);temp_c3>0;temp_c3--){
+          resultx[temp_c3]=resultx[temp_c3]+temp_datax[temp_c3];
+          if(resultx[temp_c3]>9){
+             resultx[temp_c3]=resultx[temp_c3]%10;
+             resultx[temp_c3-1] = resultx[temp_c3-1]+1;
+          }
+      }
+      resultx[0]+=temp_datax[0];
+   }
+   void subtract_old(newera_hpc_bit *num1,newera_hpc_bit *num2,int count){
+   for(int temp_c3=(count-1);temp_c3>0;temp_c3--){
+       if(num2[temp_c3]>num1[temp_c3]){
+         num1[temp_c3]+=10;
+         int temp_c4 = temp_c3-1;
+         while(num1[temp_c4]==0){
+            if(temp_c4!=0)num1[temp_c4]=9;
+            temp_c4--;
+            if(temp_c4<0)break;
+         }
+         if(temp_c4<0)temp_c4=0;
+            num1[temp_c4]--;
+         }
+         num1[temp_c3]=num1[temp_c3]-num2[temp_c3];
+     }
+     num1[0]=num1[0]-num2[0];
+   }
+   void multiply_old(newera_hpc_bit *result,int num,int count){
+    newera_hpc_bit temp_q=0,temp_r=0;
+     for(int a=(count-1);a>=0;a--){
+       result[a]=result[a]*num;
+       result[a]=result[a]+temp_q;
+       if(result[a]<=9){
+          temp_r = 0;
+          temp_q = 0;
+       }
+       else{
+          temp_r = result[a]%10;
+          temp_q = (result[a]/10);
+          result[a] = temp_r;
+       }
+     }
+   }
+};
+<<file:over>>
+<<file:mpix/src/multiply.cpp>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+#include <data.h>
+#include <basic_math.h>
+#include <iostream>
+
+using namespace std;
+
+namespace newera_mpi{
+  void multiply(newera_hpc_data *n1,newera_hpc_bit num){
+    int *limit = &(n1->digits_used);
+    int *count = &(n1->count);
+    newera_hpc_bit *result = n1->data;
+    newera_hpc_bit temp_q=0,temp_r=0;
+    for(int a=(*count-1);a>=*limit;a--){
+      result[a]=result[a]*num;
+      result[a]=result[a]+temp_q;
+      if(result[a]<=9){
+        temp_r = 0;
+        temp_q = 0;
+      }
+      else{
+         temp_r = result[a]%10;
+         temp_q = (result[a]/10);
+         result[a] = temp_r;
+      }
+    }
+    int temp_c1=*limit-1;
+    while(1){
+       if(temp_q==0)break;
+       if(temp_c1<0)break;
+       if(temp_q<10){
+          result[temp_c1]=temp_q;
+          n1->digits_used = temp_c1;
+          break;
+       }
+       result[temp_c1]=temp_q%10;
+       temp_q=temp_q/10;
+       (n1->digits_used)--;
+       if(temp_q==0)break;
+       temp_c1--;
+    }
+  }
+};
+<<file:over>>
+<<file:mpix/src/string.cpp>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+#include <init.h>
+#include <string>
+#include <iostream>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sstream>
+	
+using namespace std;
+
+namespace newera_mpi{
+	string itoa(int num){
+		ostringstream os;
+		os<<num;
+		return os.str();
+    	}
+    	newera_hpc_data *str_newera_hpc(string *input){
+        	int flag=0,a=0,b=0;
+        	newera_hpc_data *data = init_data();
+        	for(b=0;b<(*input).length();b++){
+            		string temp = (*input).substr(b,1);
+            		if(flag==0){
+               			if(temp=="0")a++;
+               			else flag = 1;
+            		}
+            		data->data[b] = atoi(temp.c_str());
+        	}
+        	data->digits_used = a;
+        	return data;
+    	}
+    	string newera_hpc_str(newera_hpc_data *input){
+		string data;
+        	for(int a=0;a<input->count;a++){
+	    		(data)+=itoa(input->data[a]);
+        	}
+        	return data;
+    	}
+	char* newera_hpc_char(newera_hpc_data *input){
+		char *data = new char [digits_mpi];
+		for(int a=0;a<digits_mpi;a++){
+			data[a] = (int)(48 + input->data[a]);
+		}
+		return data;
+	}
+	newera_hpc_data* char_newera_hpc(char *data,int count){
+		newera_hpc_data *conv = init_data();
+		int flag = 0,digits_used = 0;
+		for(int a=0;a<count;a++){
+			if(flag==0){
+				if(data[a]=='0')digits_used++;
+				else flag = 1;
+			}
+			conv->data[a] = (int)(data[a]-48);
+		}
+		conv->digits_used = digits_used;
+		return conv;
+	}
+};
+<<file:over>>
+<<file:mpix/src/subtract.cpp>>
+//Copyright 2009 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+#include <data.h>
+#include <basic_math.h>
+#include <iostream>
+
+using namespace std;
+
+namespace newera_mpi{
+  void subtract(newera_hpc_data *n1,newera_hpc_data *n2){
+    int *limit;
+    int *count = &(n1->count);
+    newera_hpc_bit *num1 = n1->data;
+    newera_hpc_bit *num2 = n2->data;
+    if(n1->digits_used<=n2->digits_used)limit = &(n1->digits_used);
+    else limit = &(n2->digits_used);
+    for(int temp_c3=(*count-1);temp_c3>=*limit;temp_c3--){
+        if(num2[temp_c3]>num1[temp_c3]){
+            num1[temp_c3]+=10;
+            int temp_c4 = temp_c3-1;
+            while(num1[temp_c4]==0){
+                if(temp_c4!=0)num1[temp_c4]=9;
+                temp_c4--;
+                if(temp_c4<0)break;
+            }
+            if(temp_c4<0)temp_c4=0;
+               num1[temp_c4]--;
+        }
+        num1[temp_c3]=num1[temp_c3]-num2[temp_c3];
+    }
+    num1[0]=num1[0]-num2[0];
+    for(int temp_c3=*limit;temp_c3<(*count-1);temp_c3++){
+       if(num1[temp_c3]!=0)break;
+       n1->digits_used = n1->digits_used+1;
+    }
+  }
+};
+<<file:over>>
+<<file:>>
+<<file:over>>
+<<file:>>
+<<file:over>>

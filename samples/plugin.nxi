@@ -1,0 +1,38 @@
+build-command:make
+
+<<file:plugin.cpp>>
+//Copyright 2010 Varun Mittal ©
+//newerahpc program is distributed under the terms of the GNU General Public License
+//
+//This file is part of newerahpc.
+//
+//newerahpc is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation version 2 of the License.
+//
+//newerahpc is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with newerahpc.  If not, see <http://www.gnu.org/licenses/>.
+
+extern "C"{
+	char *plugin_init(void *data){
+		return "test_plugin";
+	}
+	void *plugin_exec(){
+	}
+	void *plugin_exec_client(void *data){
+	}
+	void *plugin_processor(void *data){
+	}
+}
+<<file:over>>
+<<file:Makefile>>
+all:
+	g++ plugin.cpp -o bin/plugin.o -c 
+	g++ bin/*.o -o bin/libplugin.so -shared -ldl -dynamiclib -rdynamic -fPIC -shared 
+<<file:over>>
+
